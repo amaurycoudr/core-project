@@ -1,28 +1,28 @@
-import { Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
-import { ActiveUser, ActiveUserData } from 'src/iam/decorators/active-user.decorator';
+import { Controller } from '@nestjs/common';
+import { contract } from '@repo/contract';
+import { tsRestHandler, TsRestHandler } from '@ts-rest/nest';
+import { ERROR } from 'src/config/const';
 import { UserService } from './user.service';
+import { ActiveUser, ActiveUserData } from 'src/iam/decorators/active-user.decorator';
 
-@Controller('user')
+@Controller()
 export class UserController {
     constructor(private readonly userService: UserService) {}
 
-    @Post()
-    create() {
-        return this.userService.create();
-    }
+    @TsRestHandler(contract.user)
+    async handler(@ActiveUser() activeUser: ActiveUserData) {
+        return tsRestHandler(contract.user, {
+            getMe: async () => {
+                const { data, result } = await this.userService.findOne(activeUser.id);
 
-    @Get()
-    findOne(@ActiveUser() { id }: ActiveUserData) {
-        return this.userService.findOne(id);
-    }
+                if (result === ERROR) {
+                    return { body: { message: data }, status: 404 };
+                }
 
-    @Patch(':id')
-    update(@Param('id') id: string) {
-        return this.userService.update(+id);
-    }
+                const { password: _password, ...returnedUser } = data;
 
-    @Delete(':id')
-    remove(@Param('id') id: string) {
-        return this.userService.remove(+id);
+                return { status: 200, body: returnedUser };
+            },
+        });
     }
 }

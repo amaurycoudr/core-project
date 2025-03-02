@@ -1,23 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { AUTH_ERRORS, AuthErrors, contract } from '@repo/contract';
-import { eq } from 'drizzle-orm';
+import { USER_API_ERRORS, contract } from '@repo/contract';
 import { Config } from 'src/config/config';
-import { lower, UNIQUE_CONSTRAINT } from 'src/drizzle/drizzle.helper';
-import { DrizzleService } from 'src/drizzle/drizzle.service';
-import { User, users } from 'src/user/schemas/user.schema';
+import { ERROR, SUCCESS } from 'src/config/const';
+import { User } from 'src/user/schemas/user.schema';
+import { UserService } from 'src/user/user.service';
 import { z } from 'zod';
 import { ActiveUserData } from '../decorators/active-user.decorator';
 import { HashingService } from '../hashing/hashing.service';
 import { RefreshTokenIdsStorage } from './refresh-token-ids.storage/refresh-token-ids.storage';
 
-type Tokens = { accessToken: string; refreshToken: string };
-type SignInUpResponse = { result: 'error'; data: AuthErrors } | { result: 'success'; data: Tokens };
 @Injectable()
 export class AuthenticationService {
     constructor(
-        private readonly drizzleService: DrizzleService,
+        private readonly userService: UserService,
         private readonly hashingService: HashingService,
         private readonly jwtService: JwtService,
         private readonly configService: ConfigService<Config, true>,
@@ -25,44 +22,38 @@ export class AuthenticationService {
     ) {}
 
     signIn = async (signInPayload: z.infer<(typeof contract)['auth']['signIn']['body']>) => {
-        const [user] = await this.drizzleService.db
-            .select()
-            .from(users)
-            .where(eq(lower(users.email), signInPayload.email.toLowerCase()));
+        const { result, data } = await this.userService.findByEmail(signInPayload.email);
 
-        if (!user) return { data: AUTH_ERRORS.unknownUser, result: 'error' } satisfies SignInUpResponse;
+        if (result === ERROR) {
+            return { result, data } as const;
+        }
+        const user = data;
 
         const isPasswordEqual = await this.hashingService.compare(signInPayload.password, user.password);
 
-        if (!isPasswordEqual) return { data: AUTH_ERRORS.wrongPassword, result: 'error' } satisfies SignInUpResponse;
+        if (!isPasswordEqual) return { data: USER_API_ERRORS.wrongPassword, result: 'error' } as const;
 
         const tokens = await this.generateTokens(user);
-        return { data: tokens, result: 'success' } satisfies SignInUpResponse;
+        return { data: tokens, result: 'success' } as const;
     };
 
     signUp = async (signUpPayload: z.infer<(typeof contract)['auth']['signUp']['body']>) => {
-        const hashedPassword = await this.hashingService.hash(signUpPayload.password);
+        const { data, result } = await this.userService.create({
+            ...signUpPayload,
+            password: await this.hashingService.hash(signUpPayload.password),
+        });
 
-        try {
-            const [user] = await this.drizzleService.db
-                .insert(users)
-                .values({ email: signUpPayload.email, username: signUpPayload.username, password: hashedPassword })
-                .returning();
-
-            const tokens = await this.generateTokens(user);
-
-            return { data: tokens, result: 'success' } satisfies SignInUpResponse;
-        } catch (error) {
-            if ((error as Record<string, unknown>).code === UNIQUE_CONSTRAINT) {
-                return { data: AUTH_ERRORS.emailAlreadyUsed, result: 'error' } satisfies SignInUpResponse;
-            }
-            throw error;
+        if (result === ERROR) {
+            return { data: USER_API_ERRORS.emailAlreadyUsed, result: ERROR } as const;
         }
+        const tokens = await this.generateTokens(data);
+
+        return { data: tokens, result: SUCCESS } as const;
     };
 
     refreshTokens = async (refreshToken: string) => {
         if (!refreshToken) {
-            return { data: AUTH_ERRORS.missingRefreshToken, result: 'error' } satisfies SignInUpResponse;
+            return { data: USER_API_ERRORS.missingRefreshToken, result: 'error' } as const;
         }
 
         const { id } = await this.jwtService.verifyAsync<ActiveUserData>(refreshToken, {
@@ -70,22 +61,23 @@ export class AuthenticationService {
             ignoreExpiration: true,
         });
 
-        const [user] = await this.drizzleService.db.select().from(users).where(eq(users.id, id));
+        const { data, result } = await this.userService.findOne(id);
 
-        if (!user) {
-            return { data: AUTH_ERRORS.unknownUser, result: 'error' } satisfies SignInUpResponse;
+        if (result === ERROR) {
+            return { data, result };
         }
+        const user = data;
 
         const isTokenIdValid = await this.refreshTokenIdsStorage.isTokenIdValid(id, refreshToken);
 
         if (!isTokenIdValid) {
-            return { data: AUTH_ERRORS.invalidRefreshToken, result: 'error' } satisfies SignInUpResponse;
+            return { data: USER_API_ERRORS.invalidRefreshToken, result: 'error' } as const;
         }
 
         const tokens = await this.generateTokens(user);
         await this.refreshTokenIdsStorage.insert(user.id, tokens.refreshToken);
 
-        return { data: tokens, result: 'success' } satisfies SignInUpResponse;
+        return { data: tokens, result: 'success' } as const;
     };
 
     private generateTokens = async (user: User) => {

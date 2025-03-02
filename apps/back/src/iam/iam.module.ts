@@ -7,6 +7,7 @@ import { AuthenticationGuard } from './authentication/guards/authentication/auth
 import { BcryptService } from './hashing/bcrypt.service';
 import { HashingService } from './hashing/hashing.service';
 import { RefreshTokenIdsStorage } from './authentication/refresh-token-ids.storage/refresh-token-ids.storage';
+import { UserModule } from 'src/user/user.module';
 
 @Module({
     providers: [
@@ -17,5 +18,6 @@ import { RefreshTokenIdsStorage } from './authentication/refresh-token-ids.stora
         RefreshTokenIdsStorage,
     ],
     controllers: [AuthenticationController],
+    imports: [UserModule],
 })
 export class IamModule {}

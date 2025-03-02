@@ -17,6 +17,9 @@ export const configSchema = z.object({
     JWT_TOKEN_ISSUER: z.string(),
     JWT_ACCESS_TOKEN_TTL: z.coerce.number(),
     JWT_REFRESH_TOKEN_TTL: z.string(),
+
+    TMDB_API_KEY: z.string(),
+    TMDB_API_ACCESS_TOKEN: z.string(),
 });
 
 export type Config = z.infer<typeof configSchema>;
