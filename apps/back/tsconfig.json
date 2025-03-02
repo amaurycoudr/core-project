@@ -12,6 +12,7 @@
     "incremental": true,
     "skipLibCheck": true,
     "noUncheckedIndexedAccess": true,
+    "useDefineForClassFields": false,
     "strictNullChecks": true,
     "forceConsistentCasingInFileNames": true,
     "noImplicitAny": true,

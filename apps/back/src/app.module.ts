@@ -8,6 +8,8 @@ import { DrizzleModule } from './drizzle/drizzle.module';
 import { IamModule } from './iam/iam.module';
 import { UserModule } from './user/user.module';
 import { RedisModule } from './redis/redis.module';
+import { TmdbModule } from './tmdb/tmdb.module';
+import { MoviesModule } from './movies/movies.module';
 import jwtConfig from './config/jwt.config';
 
 @Module({
@@ -18,6 +20,8 @@ import jwtConfig from './config/jwt.config';
         UserModule,
         IamModule,
         RedisModule,
+        TmdbModule,
+        MoviesModule,
     ],
     controllers: [AppController],
     providers: [AppService],
