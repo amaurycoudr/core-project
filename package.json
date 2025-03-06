@@ -1,23 +1,24 @@
 {
-  "name": "with-docker",
-  "version": "0.0.0",
-  "private": true,
-  "scripts": {
-    "build": "turbo run build",
-    "clean": "turbo run clean",
-    "dev": "turbo run dev",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "lint": "turbo run lint",
-    "test": "turbo run test"
-  },
-  "dependencies": {},
-  "devDependencies": {
-    "prettier": "^3.2.5",
-    "turbo": "^2.4.4"
-  },
-  "engines": {
-    "node": ">=14.0.0",
-    "npm": ">=7.0.0"
-  },
-  "packageManager": "pnpm@9.15.4"
+    "name": "with-docker",
+    "version": "0.0.0",
+    "private": true,
+    "scripts": {
+        "build": "turbo run build",
+        "clean": "turbo run clean",
+        "dev": "turbo run dev --ui tui",
+        "db:studio": "turbo run back#db:studio",
+        "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+        "lint": "turbo run lint",
+        "test": "turbo run test"
+    },
+    "dependencies": {},
+    "devDependencies": {
+        "prettier": "^3.2.5",
+        "turbo": "^2.4.4"
+    },
+    "engines": {
+        "node": ">=14.0.0",
+        "npm": ">=7.0.0"
+    },
+    "packageManager": "pnpm@9.15.4"
 }

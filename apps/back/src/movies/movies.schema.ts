@@ -10,7 +10,7 @@ export type Job = (typeof JOBS)[number];
 export const genderEnum = pgEnum('gender', GENDERS);
 export const jobEnum = pgEnum('job', JOBS);
 
-export const movie = pgTable(
+export const movies = pgTable(
     'movie',
     {
         id: serial('id').primaryKey(),
@@ -18,66 +18,73 @@ export const movie = pgTable(
         releaseDate: date('releaseDate').notNull(),
         tmdbId: integer('tmdb_id').unique(),
         posterPath: text('posterPath'),
-        originalLanguage: varchar('originalLanguage', { length: 128 }),
-        overview: text('overview'),
-        tagLine: text('tagline'),
-        duration: integer('duration'),
+        originalLanguage: varchar('originalLanguage', { length: 50 }),
+        overview: text('overview').notNull(),
+        tagline: text('tagline').notNull(),
+        duration: integer('duration').notNull(),
     },
-    (t) => [unique('test').on(t.releaseDate, t.title)],
+    (t) => [unique('no_movie_duplicate').on(t.releaseDate, t.title)],
 );
 
-export const movieRelations = relations(movie, ({ many }) => ({
-    cast: many(cast),
-    crew: many(crew),
+export const movieRelations = relations(movies, ({ many }) => ({
+    cast: many(casts),
+    crew: many(crews),
 }));
 
-export const cast = pgTable(
+export const casts = pgTable(
     'cast',
     {
         movieId: integer('movie_id')
             .notNull()
-            .references(() => movie.id, { onDelete: 'cascade' }),
+            .references(() => movies.id, { onDelete: 'cascade' }),
         personId: integer('person_id')
             .notNull()
-            .references(() => person.id, { onDelete: 'cascade' }),
+            .references(() => persons.id, { onDelete: 'cascade' }),
         character: varchar('character', { length: 256 }).notNull(),
     },
     (t) => [primaryKey({ columns: [t.personId, t.movieId, t.character] })],
 );
-export const castRelations = relations(cast, ({ one }) => ({
-    movie: one(movie, { fields: [cast.movieId], references: [movie.id] }),
-    person: one(person, { fields: [cast.personId], references: [person.id] }),
+
+export type InsertCast = typeof casts.$inferInsert;
+
+export const castRelations = relations(casts, ({ one }) => ({
+    movie: one(movies, { fields: [casts.movieId], references: [movies.id] }),
+    person: one(persons, { fields: [casts.personId], references: [persons.id] }),
 }));
 
-export const crew = pgTable(
+export const crews = pgTable(
     'crew',
     {
         movieId: integer('movie_id')
             .notNull()
-            .references(() => movie.id, { onDelete: 'cascade' }),
+            .references(() => movies.id, { onDelete: 'cascade' }),
         personId: integer('person_id')
             .notNull()
-            .references(() => person.id, { onDelete: 'cascade' }),
+            .references(() => persons.id, { onDelete: 'cascade' }),
         job: jobEnum('job').notNull(),
     },
     (t) => [primaryKey({ columns: [t.personId, t.movieId, t.job] })],
 );
-export const crewRelations = relations(crew, ({ one }) => ({
-    movie: one(movie, { fields: [crew.movieId], references: [movie.id] }),
-    person: one(person, { fields: [crew.personId], references: [person.id] }),
+export type InsertCrew = typeof crews.$inferInsert;
+
+export const crewRelations = relations(crews, ({ one }) => ({
+    movie: one(movies, { fields: [crews.movieId], references: [movies.id] }),
+    person: one(persons, { fields: [crews.personId], references: [persons.id] }),
 }));
 
-export const person = pgTable('person', {
+export const persons = pgTable('person', {
     id: serial('id').primaryKey(),
-    name: text('name'),
+    name: text('name').notNull(),
     birthday: date('birthday'),
     deathday: date('deathday'),
-    gender: genderEnum('gender'),
-    tmdbId: integer('tmdb_id').unique(),
-    knownFor: jobEnum('known_for'),
+    gender: genderEnum('gender').notNull(),
+    tmdbId: integer('tmdb_id').unique().notNull(),
+    job: jobEnum('job').default('unknown'),
 });
 
-export const personRelations = relations(person, ({ many }) => ({
-    actingJobs: many(cast),
-    productionJobs: many(crew),
+export type InsertPerson = typeof persons.$inferInsert;
+
+export const personRelations = relations(persons, ({ many }) => ({
+    actingJobs: many(casts),
+    productionJobs: many(crews),
 }));

@@ -90,7 +90,7 @@ export class TmdbService {
     private tmdbMovieDetailsSchema = () =>
         z
             .object({
-                backdrop_path: z.string(),
+                backdrop_path: z.string().nullable(),
                 original_language: z.string(),
                 original_title: z.string(),
                 id: z.number(),
@@ -109,7 +109,7 @@ export class TmdbService {
                 overview,
                 posterPath: poster_path,
                 releaseDate: release_date,
-                runtime,
+                duration: runtime,
                 tagline,
                 title,
             }));
