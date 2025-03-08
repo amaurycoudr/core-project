@@ -30,7 +30,7 @@ const authContract = c.router({
         },
     },
     signIn: {
-        path: '/auth/sign-in', 
+        path: '/auth/sign-in',
         method: 'POST',
         body: z.object({ email: z.string(), password: z.string() }),
         responses: {
@@ -63,6 +63,29 @@ const userContract = c.router({
     },
 });
 
+const movieContract = c.router({
+    search: {
+        path: '/movies/search',
+        method: 'GET',
+        description: 'search movie on TMDB',
+        query: z.object({ page: z.number(), query: z.string().min(2) }),
+        responses: {
+            200: z.object({
+                total: z.number(),
+                page: z.number(),
+                list: z.array(
+                    z.object({
+                        title: z.string(),
+                        posterUrl: z.string().nullish(),
+                        releaseDate: z.string(),
+                        tmdbId: z.number(),
+                    }),
+                ),
+            }),
+        },
+    },
+});
+
 export const contract = c.router(
     {
         core: {
@@ -74,6 +97,7 @@ export const contract = c.router(
         },
         auth: authContract,
         user: userContract,
+        movie: movieContract,
     },
     {
         strictStatusCodes: true,

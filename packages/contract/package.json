@@ -13,13 +13,13 @@
         "typescript-eslint": "^8.20.0"
     },
     "scripts": {
-        "dev": "tsup src/index.ts --format cjs,esm --dts  --watch",
-        "build": "tsup src/index.ts --format cjs,esm --dts",
+        "dev": "tsup src/contract.ts --format cjs,esm --dts  --watch",
+        "build": "tsup src/contract.ts --format cjs,esm --dts",
         "lint": "eslint ./src/**"
     },
-    "main": "./dist/index.cjs",
-    "module": "./dist/index.js",
-    "typings": "./src/index.ts",
+    "main": "./dist/contract.cjs",
+    "module": "./dist/contract.js",
+    "typings": "./src/contract.ts",
     "lint-staged": {
         "*.{js, jsx,ts,tsx}": [
             "eslint --quiet --fix"

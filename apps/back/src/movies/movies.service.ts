@@ -112,6 +112,18 @@ export class MoviesService {
         return movie!;
     }
 
+    async search(query: string, options: { page?: number | null }) {
+        const { list, ...pagination } = await this.tmdbService.search(query, { page: options.page ?? 1 });
+
+        const moviesWithUrl = list.map(({ posterPath, releaseDate, title, tmdbId }) => ({
+            releaseDate,
+            title,
+            tmdbId,
+            posterUrl: posterPath ? this.tmdbService.getImageUrl(posterPath, 'w500') : undefined,
+        }));
+        return { ...pagination, list: moviesWithUrl };
+    }
+
     findAll() {
         return `This action returns all movies`;
     }

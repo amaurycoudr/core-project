@@ -6,10 +6,23 @@ import { z } from 'zod';
 
 // let a = await get(TmdbService).search("La ord")
 
+const getGenderFromTmdb = (tmdbGender: number) => {
+    const genderRecord: Record<number, Gender> = {
+        0: 'unknown',
+        1: 'woman',
+        2: 'man',
+        3: 'nonBinary',
+    };
+
+    return genderRecord[tmdbGender] ?? 'unknown';
+};
+
 @Injectable()
 export class TmdbService {
     private axiosClient: AxiosInstance;
     private TMDB_API_URL = 'https://api.themoviedb.org/3/';
+    private TMDB_IMG_500 = 'https://image.tmdb.org/t/p/w500/';
+
     constructor(private config: ConfigService) {
         this.axiosClient = axios.create({ baseURL: this.TMDB_API_URL });
         this.axiosClient.defaults.headers.common['Authorization'] = `Bearer ${this.config.get('TMDB_API_ACCESS_TOKEN')}`;
@@ -29,58 +42,68 @@ export class TmdbService {
 
     async findPerson(tmdbId: number) {
         const result = await this.axiosClient.get(this.TMDB_ENDPOINTS.person(tmdbId));
-        return z.object({ data: this.tmdbPersonDetailSchema() }).parse(result).data;
+        return z.object({ data: this.tmdbPersonDetailSchema }).parse(result).data;
     }
     async findCredit(tmdbId: number) {
         const result = await this.axiosClient.get(this.TMDB_ENDPOINTS.credits(tmdbId));
         return z.object({ data: this.tmdbMovieCreditSchema() }).parse(result).data;
     }
-    async search(query: string) {
+    async search(query: string, { page }: { page?: number }) {
         const result = await this.axiosClient.get(this.TMDB_ENDPOINTS.searchMovie(), {
-            params: { query },
+            params: { query, page },
         });
 
         return z
-            .object({ data: z.object({ results: z.array(this.tmdbSearchMovie()) }) })
-            .parse(result)
-            .data.results.slice(0, 10);
+            .object({ data: z.object({ results: z.array(this.tmdbSearchMovie), total_results: z.number(), page: z.number() }) })
+            .transform(({ data: { page, results, total_results } }) => ({
+                page,
+                list: results,
+                total: total_results,
+            }))
+            .parse(result);
     }
 
-    private tmdbSearchMovie = () =>
-        z
-            .object({
-                id: z.number(),
-                original_title: z.string(),
-                overview: z.string(),
-                poster_path: z.string().nullable(),
-                release_date: z.string(),
-                title: z.string(),
-            })
-            .transform(({ release_date, poster_path, original_title, ...obj }) => ({
-                ...obj,
-                releaseDate: release_date,
-                posterPath: poster_path,
-                originalTitle: original_title,
-            }));
+    getImageUrl = (imgPath: string, size: 'w500') => {
+        if (size === 'w500') {
+            return `${this.TMDB_IMG_500}${imgPath}`;
+        }
+        return '';
+    };
 
-    private tmdbPersonDetailSchema = () =>
-        z
-            .object({
-                birthday: z.string().nullable(),
-                deathday: z.string().nullable(),
-                gender: z.number().transform(this.getGenderFromTmdb),
-                id: z.number(),
-                known_for_department: z.string(),
-                name: z.string(),
-            })
-            .transform(({ birthday, deathday, gender, id, known_for_department, name }) => ({
-                birthday,
-                deathday,
-                gender,
-                tmdbId: id,
-                job: this.getJobFromTmbDepartment(known_for_department),
-                name,
-            }));
+    private tmdbSearchMovie = z
+        .object({
+            id: z.number(),
+            original_title: z.string(),
+            overview: z.string(),
+            poster_path: z.string().nullable(),
+            release_date: z.string(),
+            title: z.string(),
+        })
+        .transform(({ release_date, poster_path, original_title, id, ...obj }) => ({
+            ...obj,
+            tmdbId: id,
+            releaseDate: release_date,
+            posterPath: poster_path,
+            originalTitle: original_title,
+        }));
+
+    private tmdbPersonDetailSchema = z
+        .object({
+            birthday: z.string().nullable(),
+            deathday: z.string().nullable(),
+            gender: z.number().transform(getGenderFromTmdb),
+            id: z.number(),
+            known_for_department: z.string(),
+            name: z.string(),
+        })
+        .transform(({ birthday, deathday, gender, id, known_for_department, name }) => ({
+            birthday,
+            deathday,
+            gender,
+            tmdbId: id,
+            job: this.getJobFromTmbDepartment(known_for_department),
+            name,
+        }));
 
     private tmdbMovieCreditSchema = () =>
         z.object({
@@ -113,17 +136,6 @@ export class TmdbService {
                 tagline,
                 title,
             }));
-
-    private getGenderFromTmdb = (tmdbGender: number) => {
-        const genderRecord: Record<number, Gender> = {
-            0: 'unknown',
-            1: 'woman',
-            2: 'man',
-            3: 'nonBinary',
-        };
-
-        return genderRecord[tmdbGender] ?? 'unknown';
-    };
 
     private getJobFromTmdb = (job: string): Job => {
         const jobByTmdbJob: Record<string, Job> = {
