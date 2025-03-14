@@ -1,0 +1,13 @@
+diff --git a/sdks/hermes-engine/hermes-engine.podspec b/sdks/hermes-engine/hermes-engine.podspec
+index 6680c60dc493f4d309c61273d91da75f7f9023fd..95d1bb5412f4ec48b436a72a2f64c49334205f9b 100644
+--- a/sdks/hermes-engine/hermes-engine.podspec
++++ b/sdks/hermes-engine/hermes-engine.podspec
+@@ -50,7 +50,7 @@ Pod::Spec.new do |spec|
+       ss.source_files = "destroot/include/hermes/**/*.h"
+       ss.header_mappings_dir = "destroot/include"
+       ss.ios.vendored_frameworks = "destroot/Library/Frameworks/universal/hermes.xcframework"
+-      ss.visionos.vendored_frameworks = "destroot/Library/Frameworks/universal/hermes.xcframework"
++      # ss.visionos.vendored_frameworks = "destroot/Library/Frameworks/universal/hermes.xcframework"
+       ss.osx.vendored_frameworks = "destroot/Library/Frameworks/macosx/hermes.framework"
+     end
+ 
