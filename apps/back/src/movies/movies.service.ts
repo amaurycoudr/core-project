@@ -1,143 +1,152 @@
-import { InjectQueue } from '@nestjs/bullmq';
-import { Injectable, Logger } from '@nestjs/common';
-import { Queue } from 'bullmq';
-import { DrizzleService } from 'src/drizzle/drizzle.service';
-import { TmdbService } from 'src/tmdb/tmdb.service';
-import { AddMovieFromTmdb, MOVIE_JOBS, MOVIE_QUEUE } from './movies.jobs';
-import { casts, crews, InsertCast, InsertCrew, InsertPerson, movies, persons } from './movies.schema';
-import { eq } from 'drizzle-orm';
-import { mapParallelAsyncWithLimit, uniqBy } from 'rambdax';
-import { conflictUpdateAllExcept } from 'src/drizzle/drizzle.helper';
+import { InjectQueue } from "@nestjs/bullmq";
+import { Injectable, Logger } from "@nestjs/common";
+import type { Queue } from "bullmq";
+import { eq } from "drizzle-orm";
+import { mapParallelAsyncWithLimit, uniqBy } from "rambdax";
+import { conflictUpdateAllExcept } from "src/drizzle/drizzle.helper";
+import { DrizzleService } from "src/drizzle/drizzle.service";
+import { TmdbService } from "src/tmdb/tmdb.service";
+import { type AddMovieFromTmdb, MOVIE_JOBS, MOVIE_QUEUE } from "./movies.jobs";
+import { type InsertCast, type InsertCrew, type InsertPerson, casts, crews, movies, persons } from "./movies.schema";
 
 @Injectable()
 export class MoviesService {
-    private readonly logger = new Logger(MoviesService.name, { timestamp: true });
-    constructor(
-        private readonly tmdbService: TmdbService,
-        private readonly drizzleService: DrizzleService,
-        @InjectQueue(MOVIE_QUEUE) private readonly movieQueue: Queue,
-    ) {}
-    async addMovieFromTmdbToQueue(tmdbId: number, { refresh }: { refresh: boolean }) {
-        await this.movieQueue.add(MOVIE_JOBS.ADD_MOVIE_FROM_TMDB, { tmdbId, refresh } satisfies AddMovieFromTmdb);
-    }
+	private readonly logger = new Logger(MoviesService.name, { timestamp: true });
+	constructor(
+		private readonly tmdbService: TmdbService,
+		private readonly drizzleService: DrizzleService,
+		@InjectQueue(MOVIE_QUEUE) private readonly movieQueue: Queue,
+	) {}
 
-    async addMovieFromTmdb(tmdbId: number, { refresh }: { refresh: boolean }) {
-        const { id } = await this.insertTmdbMovie(tmdbId);
-        await this.insertTmdbCredit(tmdbId, id, { refresh });
-    }
+	async addMovieFromTmdbToQueue(tmdbId: number, { refresh }: { refresh: boolean }) {
+		await this.movieQueue.add(MOVIE_JOBS.ADD_MOVIE_FROM_TMDB, {
+			tmdbId,
+			refresh,
+		} satisfies AddMovieFromTmdb);
+	}
 
-    async insertTmdbCredit(tmdbMovieId: number, movieId: number, { refresh }: { refresh: boolean }) {
-        if (refresh) {
-            await this.dropCrew(movieId);
-            await this.dropCast(movieId);
-            this.logger.log(`Cast Crew (TMDB_ID=${tmdbMovieId}) dropped`);
-        }
+	async addMovieFromTmdb(tmdbId: number, { refresh }: { refresh: boolean }) {
+		const { id } = await this.insertTmdbMovie(tmdbId);
+		await this.insertTmdbCredit(tmdbId, id, { refresh });
+	}
 
-        const { cast, crew } = await this.tmdbService.findCredit(tmdbMovieId);
-        const filteredCrew = crew.filter(({ job }) => job !== 'unknown');
+	async insertTmdbCredit(tmdbMovieId: number, movieId: number, { refresh }: { refresh: boolean }) {
+		if (refresh) {
+			await this.dropCrew(movieId);
+			await this.dropCast(movieId);
+			this.logger.log(`Cast Crew (TMDB_ID=${tmdbMovieId}) dropped`);
+		}
 
-        this.logger.log(`Credit(TMDB_ID=${tmdbMovieId}) fetched from TMDB`);
+		const { cast, crew } = await this.tmdbService.findCredit(tmdbMovieId);
+		const filteredCrew = crew.filter(({ job }) => job !== "unknown");
 
-        const persons = uniqBy(({ tmdbId }) => tmdbId, [...filteredCrew, ...cast]);
+		this.logger.log(`Credit(TMDB_ID=${tmdbMovieId}) fetched from TMDB`);
 
-        const personsDetails = await mapParallelAsyncWithLimit(
-            async ({ tmdbId }) => {
-                return await this.tmdbService.findPerson(tmdbId);
-            },
-            10,
-            persons,
-        );
+		const persons = uniqBy(({ tmdbId }) => tmdbId, [...filteredCrew, ...cast]);
 
-        this.logger.log(`Credit(TMDB_ID=${tmdbMovieId}) ${persons.length} persons fetched from TMDB`);
+		const personsDetails = await mapParallelAsyncWithLimit(
+			async ({ tmdbId }) => {
+				return await this.tmdbService.findPerson(tmdbId);
+			},
+			10,
+			persons,
+		);
 
-        const insertedCrewPersons = await this.insertPersons(personsDetails);
+		this.logger.log(`Credit(TMDB_ID=${tmdbMovieId}) ${persons.length} persons fetched from TMDB`);
 
-        await this.insertCrew(
-            filteredCrew.map(
-                ({ job, tmdbId }): InsertCrew => ({
-                    job,
-                    movieId,
-                    personId: insertedCrewPersons.find(({ tmdbId: personTmdbId }) => personTmdbId === tmdbId)!.id,
-                }),
-            ),
-        );
+		const insertedCrewPersons = await this.insertPersons(personsDetails);
 
-        this.logger.log(`Crew(TMDB_ID=${tmdbMovieId}) inserted`);
+		await this.insertCrew(
+			filteredCrew.map(
+				({ job, tmdbId }): InsertCrew => ({
+					job,
+					movieId,
+					personId: insertedCrewPersons.find(({ tmdbId: personTmdbId }) => personTmdbId === tmdbId)!.id,
+				}),
+			),
+		);
 
-        await this.insertCast(
-            cast.map(
-                ({ character, tmdbId }): InsertCast => ({
-                    character,
-                    movieId,
-                    personId: insertedCrewPersons.find(({ tmdbId: personTmdbId }) => personTmdbId === tmdbId)!.id,
-                }),
-            ),
-        );
+		this.logger.log(`Crew(TMDB_ID=${tmdbMovieId}) inserted`);
 
-        this.logger.log(`Cast(TMDB_ID=${tmdbMovieId}) inserted`);
-    }
+		await this.insertCast(
+			cast.map(
+				({ character, tmdbId }): InsertCast => ({
+					character,
+					movieId,
+					personId: insertedCrewPersons.find(({ tmdbId: personTmdbId }) => personTmdbId === tmdbId)!.id,
+				}),
+			),
+		);
 
-    async insertPersons(insertPersons: InsertPerson[]) {
-        return await this.drizzleService.db
-            .insert(persons)
-            .values(insertPersons)
-            .onConflictDoUpdate({ target: persons.tmdbId, set: conflictUpdateAllExcept(persons, ['tmdbId', 'id']) })
-            .returning();
-    }
+		this.logger.log(`Cast(TMDB_ID=${tmdbMovieId}) inserted`);
+	}
 
-    async insertCrew(insertCrews: InsertCrew[]) {
-        return await this.drizzleService.db.insert(crews).values(insertCrews).onConflictDoNothing().returning();
-    }
+	async insertPersons(insertPersons: InsertPerson[]) {
+		return await this.drizzleService.db
+			.insert(persons)
+			.values(insertPersons)
+			.onConflictDoUpdate({
+				target: persons.tmdbId,
+				set: conflictUpdateAllExcept(persons, ["tmdbId", "id"]),
+			})
+			.returning();
+	}
 
-    async insertCast(insertCasts: InsertCast[]) {
-        return await this.drizzleService.db.insert(casts).values(insertCasts).onConflictDoNothing().returning();
-    }
+	async insertCrew(insertCrews: InsertCrew[]) {
+		return await this.drizzleService.db.insert(crews).values(insertCrews).onConflictDoNothing().returning();
+	}
 
-    async dropCrew(movieId: number) {
-        return await this.drizzleService.db.delete(crews).where(eq(crews.movieId, movieId));
-    }
+	async insertCast(insertCasts: InsertCast[]) {
+		return await this.drizzleService.db.insert(casts).values(insertCasts).onConflictDoNothing().returning();
+	}
 
-    async dropCast(movieId: number) {
-        return await this.drizzleService.db.delete(casts).where(eq(casts.movieId, movieId));
-    }
+	async dropCrew(movieId: number) {
+		return await this.drizzleService.db.delete(crews).where(eq(crews.movieId, movieId));
+	}
 
-    async insertTmdbMovie(tmdbMovieId: number) {
-        const tmdbMovie = await this.tmdbService.findMovie(tmdbMovieId);
-        this.logger.log(`Movie(TMDB_ID=${tmdbMovieId}) (${tmdbMovie.title}) fetched from TMDB`);
-        const [movie] = await this.drizzleService.db
-            .insert(movies)
-            .values(tmdbMovie)
-            .onConflictDoUpdate({ set: tmdbMovie, target: movies.tmdbId })
-            .returning();
-        return movie!;
-    }
+	async dropCast(movieId: number) {
+		return await this.drizzleService.db.delete(casts).where(eq(casts.movieId, movieId));
+	}
 
-    async search(query: string, options: { page?: number | null }) {
-        const { list, ...pagination } = await this.tmdbService.search(query, { page: options.page ?? 1 });
+	async insertTmdbMovie(tmdbMovieId: number) {
+		const tmdbMovie = await this.tmdbService.findMovie(tmdbMovieId);
+		this.logger.log(`Movie(TMDB_ID=${tmdbMovieId}) (${tmdbMovie.title}) fetched from TMDB`);
+		const [movie] = await this.drizzleService.db
+			.insert(movies)
+			.values(tmdbMovie)
+			.onConflictDoUpdate({ set: tmdbMovie, target: movies.tmdbId })
+			.returning();
+		return movie!;
+	}
 
-        const moviesWithUrl = list.map(({ posterPath, releaseDate, title, tmdbId }) => ({
-            releaseDate,
-            title,
-            tmdbId,
-            posterUrl: posterPath ? this.tmdbService.getImageUrl(posterPath, 'w500') : undefined,
-        }));
-        return { ...pagination, list: moviesWithUrl };
-    }
+	async search(query: string, options: { page?: number | null }) {
+		const { list, ...pagination } = await this.tmdbService.search(query, {
+			page: options.page ?? 1,
+		});
 
-    findAll() {
-        return `This action returns all movies`;
-    }
+		const moviesWithUrl = list.map(({ posterPath, releaseDate, title, tmdbId }) => ({
+			releaseDate,
+			title,
+			tmdbId,
+			posterUrl: posterPath ? this.tmdbService.getImageUrl(posterPath, "w500") : undefined,
+		}));
+		return { ...pagination, list: moviesWithUrl };
+	}
 
-    async findOne(id: number) {
-        const [movie] = await this.drizzleService.db.select({}).from(movies).where(eq(movies.id, id));
-        return movie;
-    }
+	findAll() {
+		return "This action returns all movies";
+	}
 
-    update(id: number) {
-        return `This action updates a #${id} movie`;
-    }
+	async findOne(id: number) {
+		const [movie] = await this.drizzleService.db.select({}).from(movies).where(eq(movies.id, id));
+		return movie;
+	}
 
-    remove(id: number) {
-        return `This action removes a #${id} movie`;
-    }
+	update(id: number) {
+		return `This action updates a #${id} movie`;
+	}
+
+	remove(id: number) {
+		return `This action removes a #${id} movie`;
+	}
 }

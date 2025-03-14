@@ -1,31 +1,19 @@
 {
-    "name": "@repo/contract",
-    "type": "module",
-    "dependencies": {
-        "@ts-rest/core": "^3.52.0",
-        "zod": "^3.24.2"
-    },
-    "devDependencies": {
-        "@eslint/js": "^9.18.0",
-        "eslint": "^9.13.0",
-        "globals": "^15.9.0",
-        "tsup": "^8.4.0",
-        "typescript-eslint": "^8.20.0"
-    },
-    "scripts": {
-        "dev": "tsup src/contract.ts --format cjs,esm --dts  --watch",
-        "build": "tsup src/contract.ts --format cjs,esm --dts",
-        "lint": "eslint ./src/**"
-    },
-    "main": "./dist/contract.cjs",
-    "module": "./dist/contract.js",
-    "typings": "./src/contract.ts",
-    "lint-staged": {
-        "*.{js, jsx,ts,tsx}": [
-            "eslint --quiet --fix"
-        ],
-        "*.{json,js,ts,jsx,tsx,html}": [
-            "prettier --write --ignore-unknown"
-        ]
-    }
+	"name": "@repo/contract",
+	"type": "module",
+	"dependencies": {
+		"@ts-rest/core": "^3.52.0",
+		"zod": "^3.24.2"
+	},
+	"devDependencies": {
+		"globals": "^15.9.0",
+		"tsup": "^8.4.0"
+	},
+	"scripts": {
+		"dev": "tsup src/contract.ts --format cjs,esm --dts  --watch",
+		"build": "tsup src/contract.ts --format cjs,esm --dts"
+	},
+	"main": "./dist/contract.cjs",
+	"module": "./dist/contract.js",
+	"typings": "./src/contract.ts"
 }
