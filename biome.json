@@ -1,0 +1,69 @@
+{
+	"$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+	"vcs": {
+		"enabled": true,
+		"clientKind": "git",
+		"useIgnoreFile": true
+	},
+	"files": {
+		"ignoreUnknown": false,
+		"ignore": []
+	},
+	"formatter": {
+		"enabled": true,
+		"indentStyle": "tab"
+	},
+	"organizeImports": {
+		"enabled": true
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"recommended": true,
+			"complexity": {
+				"useLiteralKeys": {
+					"fix": "safe",
+					"level": "warn"
+				},
+				"noUselessStringConcat": { "fix": "safe", "level": "warn" }
+			},
+			"correctness": {
+				"noUnusedVariables": "error",
+				"noUnusedPrivateClassMembers": "error"
+			},
+			"suspicious": {
+				"noConsole": "error"
+			},
+
+			"style": {
+				"noUnusedTemplateLiteral": {
+					"fix": "safe",
+					"level": "warn"
+				},
+				"useSelfClosingElements": {
+					"fix": "safe",
+					"level": "warn"
+				},
+				"useTemplate": {
+					"fix": "safe",
+					"level": "error"
+				},
+				"useNodejsImportProtocol": {
+					"fix": "safe",
+					"level": "error"
+				},
+				"noNonNullAssertion": "off",
+				"useImportType": "off"
+			}
+		}
+	},
+	"javascript": {
+		"formatter": {
+			"quoteStyle": "double",
+			"lineWidth": 120
+		},
+		"parser": {
+			"unsafeParameterDecoratorsEnabled": true
+		}
+	}
+}
