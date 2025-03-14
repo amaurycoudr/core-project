@@ -68,7 +68,7 @@ const movieContract = c.router({
         path: '/movies/search',
         method: 'GET',
         description: 'search movie on TMDB',
-        query: z.object({ page: z.number(), query: z.string().min(2) }),
+        query: z.object({ page: z.number().nullish(), query: z.string().min(2) }),
         responses: {
             200: z.object({
                 total: z.number(),
