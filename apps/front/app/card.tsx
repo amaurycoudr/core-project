@@ -1,9 +1,17 @@
 import Card from "@/components/Card";
 import { useApiClient } from "@/hooks/apiClient";
 import { useQuery } from "@tanstack/react-query";
-import { ClientInferResponseBody } from "@ts-rest/core";
 import { useState } from "react";
-import { Modal, Pressable, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity } from "react-native";
+import {
+	Modal,
+	Pressable,
+	SafeAreaView,
+	ScrollView,
+	StyleSheet,
+	Text,
+	TextInput,
+	TouchableOpacity,
+} from "react-native";
 
 export default function CardScreen() {
 	const client = useApiClient();
@@ -20,7 +28,6 @@ export default function CardScreen() {
 		},
 	});
 	const [card, setCard] = useState<NonNullable<typeof searchData>[number] | undefined>(undefined);
-	console.log(card);
 
 	return (
 		<>
@@ -29,33 +36,35 @@ export default function CardScreen() {
 					onChange={(value) => {
 						setSearchQuery(value.nativeEvent.text);
 					}}
+					placeholder="Test"
 					style={{
 						padding: 12,
 						borderWidth: 1,
 						borderColor: "grey",
-						backgroundColor: "red",
 					}}
 					value={searchQuery}
 				/>
-				{searchData?.map((cardInput) => {
-					const { title, tmdbId } = cardInput;
-					return (
-						<TouchableOpacity
-							onPress={() => {
-								setCard(cardInput);
-							}}
-							style={{
-								padding: 12,
-								borderTopWidth: 1,
-								borderBottomWidth: 1,
-								borderColor: "grey",
-							}}
-							key={tmdbId}
-						>
-							<Text>{title}</Text>
-						</TouchableOpacity>
-					);
-				})}
+				<ScrollView>
+					{searchData?.map((cardInput) => {
+						const { title, tmdbId } = cardInput;
+						return (
+							<TouchableOpacity
+								onPress={() => {
+									setCard(cardInput);
+								}}
+								style={{
+									padding: 12,
+									borderTopWidth: 1,
+									borderBottomWidth: 1,
+									borderColor: "grey",
+								}}
+								key={tmdbId}
+							>
+								<Text>{title}</Text>
+							</TouchableOpacity>
+						);
+					})}
+				</ScrollView>
 				<Modal visible={!!card} transparent animationType="fade">
 					<Pressable
 						style={{

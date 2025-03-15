@@ -1,11 +1,10 @@
-import { useApiClient, useSetTokens } from "@/hooks/apiClient";
+import { useApiClient, useIsSignIn, useSetTokens } from "@/hooks/apiClient";
 import { useMutation } from "@tanstack/react-query";
-import { Link, Stack } from "expo-router";
-import { useState } from "react";
+import { Link } from "expo-router";
 import { Button, StyleSheet, Text, View } from "react-native";
 export default function HomeScreen() {
-	const [connected, setConnected] = useState(false);
 	const client = useApiClient();
+	const isSignIn = useIsSignIn();
 	const setTokens = useSetTokens();
 
 	const signIn = useMutation({
@@ -13,15 +12,13 @@ export default function HomeScreen() {
 		onSuccess: ({ body, status }) => {
 			if (status === 200) {
 				setTokens(body);
-				setConnected(true);
 			}
 		},
 	});
 	return (
 		<>
-			<Stack.Screen options={{ title: "Test r!" }} />
 			<View style={styles.container}>
-				{connected ? (
+				{isSignIn ? (
 					<Link href={"/card"}>
 						<Text>Card</Text>
 					</Link>

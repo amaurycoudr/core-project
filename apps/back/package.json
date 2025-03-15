@@ -39,6 +39,7 @@
 		"dotenv": "^16.4.7",
 		"drizzle-orm": "^0.40.0",
 		"ioredis": "^5.5.0",
+		"node-vibrant": "^4.0.3",
 		"pg": "^8.13.3",
 		"rambdax": "^11.3.1",
 		"reflect-metadata": "^0.2.2",
@@ -69,13 +70,19 @@
 		"typescript": "^5.7.3"
 	},
 	"jest": {
-		"moduleFileExtensions": ["js", "json", "ts"],
+		"moduleFileExtensions": [
+			"js",
+			"json",
+			"ts"
+		],
 		"rootDir": "src",
 		"testRegex": ".*\\.spec\\.ts$",
 		"transform": {
 			"^.+\\.(t|j)s$": "ts-jest"
 		},
-		"collectCoverageFrom": ["**/*.(t|j)s"],
+		"collectCoverageFrom": [
+			"**/*.(t|j)s"
+		],
 		"moduleNameMapper": {
 			"^src/(.*)$": "<rootDir>/$1"
 		},

@@ -29,7 +29,8 @@
 			},
 			"correctness": {
 				"noUnusedVariables": "error",
-				"noUnusedPrivateClassMembers": "error"
+				"noUnusedPrivateClassMembers": "error",
+				"noUnusedImports": "error"
 			},
 			"suspicious": {
 				"noConsole": "error"

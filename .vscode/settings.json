@@ -5,7 +5,8 @@
 		}
 	],
 	"editor.codeActionsOnSave": {
-		"source.fixAll.biome": "explicit"
+		"source.fixAll.biome": "explicit",
+		"source.organizeImports.biome": "always"
 	},
 	"editor.defaultFormatter": "biomejs.biome",
 	"[json]": {
